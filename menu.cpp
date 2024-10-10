@@ -24,7 +24,7 @@ private:
     void OnUndo(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
     void OnQuit(wxCommandEvent& event);
-
+    void OnClose();
     wxDECLARE_EVENT_TABLE();
 };
 
@@ -141,3 +141,5 @@ void MyFrame::OnAbout(wxCommandEvent& event) {
 void MyFrame::OnQuit(wxCommandEvent& event) {
     Close(true);
 }
+
+
