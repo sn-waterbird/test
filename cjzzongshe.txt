@@ -33,6 +33,8 @@ private:
     void OnMouseMove(wxMouseEvent& event);
     void OnMouseUp(wxMouseEvent& event);
     void DrawShapes(wxMemoryDC& dc);
+    void DrawGrid(wxMemoryDC& dc); // 新增：绘制网格
+    void UpdateCanvas();
 
     wxDECLARE_EVENT_TABLE();
 
@@ -52,6 +54,8 @@ private:
     };
 
     std::vector<Shape> m_shapes;
+
+    const int GRID_SIZE = 20; // 网格间距
 };
 
 wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
@@ -61,8 +65,8 @@ EVT_MENU(1003, MyFrame::OnExportPDF)
 EVT_MENU(1004, MyFrame::OnClearCanvas)
 EVT_MENU(1005, MyFrame::OnDrawRectangle)
 EVT_MENU(1006, MyFrame::OnDrawCircle)
-EVT_MENU(1008, MyFrame::OnDrawLine)
-EVT_MENU(1007, MyFrame::OnUndo)
+EVT_MENU(1007, MyFrame::OnDrawLine)
+EVT_MENU(1008, MyFrame::OnUndo)
 EVT_MENU(wxID_ABOUT, MyFrame::OnAbout)
 EVT_MENU(wxID_EXIT, MyFrame::OnQuit)
 EVT_PAINT(MyFrame::OnPaint)
@@ -74,13 +78,13 @@ wxEND_EVENT_TABLE()
 wxIMPLEMENT_APP(MyApp);
 
 bool MyApp::OnInit() {
-    MyFrame* frame = new MyFrame("Industrial Design Tool");
+    MyFrame* frame = new MyFrame("Industrial Design Tool with Grid");
     frame->Show(true);
     return true;
 }
 
 MyFrame::MyFrame(const wxString& title)
-    : wxFrame(NULL, wxID_ANY, title), m_canvas(800, 600), m_drawing(false), m_drawCircle(false), m_drawLine(false), m_drawRectangle(false) {
+    : wxFrame(NULL, wxID_ANY, title), m_canvas(1200, 800), m_drawing(false), m_drawCircle(false), m_drawLine(false), m_drawRectangle(false) {
 
     wxToolBar* toolbar = CreateToolBar();
     toolbar->AddTool(1001, "Import CAD", wxArtProvider::GetBitmap(wxART_FILE_OPEN));
@@ -89,19 +93,19 @@ MyFrame::MyFrame(const wxString& title)
     toolbar->AddTool(1004, "Clear Canvas", wxArtProvider::GetBitmap(wxART_DELETE));
     toolbar->AddTool(1005, "Draw Rectangle", wxArtProvider::GetBitmap(wxART_TIP));
     toolbar->AddTool(1006, "Draw Circle", wxArtProvider::GetBitmap(wxART_GO_DOWN));
-    toolbar->AddTool(1008, "Draw Line", wxArtProvider::GetBitmap(wxART_TIP));
-    toolbar->AddTool(1007, "Undo", wxArtProvider::GetBitmap(wxART_UNDO));
+    toolbar->AddTool(1007, "Draw Line", wxArtProvider::GetBitmap(wxART_TIP));
+    toolbar->AddTool(1008, "Undo", wxArtProvider::GetBitmap(wxART_UNDO));
     toolbar->Realize();
 
     wxMenu* menuFile = new wxMenu;
-    menuFile->Append(1001, "Import CAD File\tCtrl-C", "Import CAD format files");
+    menuFile->Append(1001, "Import CAD File\tCtrl-I", "Import CAD format files");
     menuFile->Append(1002, "Save\tCtrl-S", "Save the project");
     menuFile->Append(1003, "Export to PDF\tCtrl-E", "Export the project as a PDF");
     menuFile->Append(1004, "Clear Canvas\tCtrl-L", "Clear the drawing canvas");
     menuFile->Append(1005, "Draw Rectangle\tCtrl-R", "Draw a rectangle on the canvas");
     menuFile->Append(1006, "Draw Circle\tCtrl-C", "Draw a circle on the canvas");
-    menuFile->Append(1008, "Draw Line\tCtrl-L", "Draw a line on the canvas");
-    menuFile->Append(1007, "Undo\tCtrl-Z", "Undo the last drawing operation");
+    menuFile->Append(1007, "Draw Line\tCtrl-L", "Draw a line on the canvas");
+    menuFile->Append(1008, "Undo\tCtrl-Z", "Undo the last drawing operation");
     menuFile->Append(wxID_EXIT, "Exit\tCtrl-Q", "Close the application");
 
     wxMenu* menuHelp = new wxMenu;
@@ -165,26 +169,22 @@ void MyFrame::OnDrawRectangle(wxCommandEvent& event) {
 
 void MyFrame::OnDrawCircle(wxCommandEvent& event) {
     m_drawCircle = true;
-    m_drawLine = false; 
-    m_drawRectangle = false; 
+    m_drawLine = false;
+    m_drawRectangle = false;
     wxMessageBox("Click and drag to draw a circle on the canvas.", "Draw Circle", wxOK | wxICON_INFORMATION);
 }
 
 void MyFrame::OnDrawLine(wxCommandEvent& event) {
     m_drawLine = true;
-    m_drawCircle = false; 
-    m_drawRectangle = false; 
+    m_drawCircle = false;
+    m_drawRectangle = false;
     wxMessageBox("Click to set start and end points for the line.", "Draw Line", wxOK | wxICON_INFORMATION);
 }
 
 void MyFrame::OnUndo(wxCommandEvent& event) {
     if (!m_shapes.empty()) {
         m_shapes.pop_back();
-        wxMemoryDC dc(m_canvas);
-        dc.SetBackground(wxBrush(GetBackgroundColour()));
-        dc.Clear();
-        DrawShapes(dc);
-        Refresh();
+        UpdateCanvas();
     }
     else {
         wxMessageBox("No shapes to undo!", "Info", wxOK | wxICON_INFORMATION);
@@ -206,12 +206,47 @@ void MyFrame::OnMouseDown(wxMouseEvent& event) {
 void MyFrame::OnMouseMove(wxMouseEvent& event) {
     if (m_drawing) {
         m_endPoint = event.GetPosition();
-        wxMemoryDC dc(m_canvas);
-        dc.SetBrush(wxBrush(wxColor(0, 0, 255)));
-        dc.SetPen(wxPen(wxColor(0, 0, 255), 2));
+        UpdateCanvas(); // Update the canvas with the current shape
+    }
+}
 
-        dc.SetBackground(wxBrush(GetBackgroundColour()));
-        dc.Clear();
+void MyFrame::OnMouseUp(wxMouseEvent& event) {
+    if (m_drawing) {
+        m_drawing = false;
+
+        // 对齐到网格
+        m_startPoint.x = (m_startPoint.x / GRID_SIZE) * GRID_SIZE;
+        m_startPoint.y = (m_startPoint.y / GRID_SIZE) * GRID_SIZE;
+        m_endPoint.x = (m_endPoint.x / GRID_SIZE) * GRID_SIZE;
+        m_endPoint.y = (m_endPoint.y / GRID_SIZE) * GRID_SIZE;
+
+        Shape shape = { m_startPoint, m_endPoint, m_drawCircle, m_drawRectangle };
+
+        if (m_drawLine) {
+            shape.isCircle = false;
+            shape.isRectangle = false;
+        }
+
+        m_shapes.push_back(shape);
+        UpdateCanvas(); // Finalize the drawing
+    }
+}
+
+void MyFrame::UpdateCanvas() {
+    wxMemoryDC dc(m_canvas);
+    dc.SetBackground(wxBrush(GetBackgroundColour()));
+    dc.Clear();
+
+    // 绘制网格
+    DrawGrid(dc);
+
+    // Draw previous shapes
+    DrawShapes(dc);
+
+    // Draw current temporary shape
+    if (m_drawing) {
+        dc.SetBrush(wxBrush(wxColor(0, 0, 255, 128))); // semi-transparent color
+        dc.SetPen(wxPen(wxColor(0, 0, 255), 2));
 
         if (m_drawCircle) {
             int radius = static_cast<int>(sqrt(pow(m_endPoint.x - m_startPoint.x, 2) + pow(m_endPoint.y - m_startPoint.y, 2)));
@@ -225,25 +260,9 @@ void MyFrame::OnMouseMove(wxMouseEvent& event) {
                 m_endPoint.x - m_startPoint.x,
                 m_endPoint.y - m_startPoint.y);
         }
-
-        DrawShapes(dc);
-        Refresh();
     }
-}
 
-void MyFrame::OnMouseUp(wxMouseEvent& event) {
-    if (m_drawing) {
-        m_drawing = false;
-
-        Shape shape = { m_startPoint, m_endPoint, m_drawCircle, m_drawRectangle };
-
-        if (m_drawLine) {
-            shape.isCircle = false;
-            shape.isRectangle = false;
-        }
-
-        m_shapes.push_back(shape);
-    }
+    Refresh();
 }
 
 void MyFrame::DrawShapes(wxMemoryDC& dc) {
@@ -263,6 +282,18 @@ void MyFrame::DrawShapes(wxMemoryDC& dc) {
         else {
             dc.DrawLine(shape.start.x, shape.start.y, shape.end.x, shape.end.y);
         }
+    }
+}
+
+void MyFrame::DrawGrid(wxMemoryDC& dc) {
+    dc.SetPen(wxPen(wxColor(200, 200, 200), 1)); // 浅灰色网格线
+
+    for (int x = 0; x < m_canvas.GetWidth(); x += GRID_SIZE) {
+        dc.DrawLine(x, 0, x, m_canvas.GetHeight());
+    }
+
+    for (int y = 0; y < m_canvas.GetHeight(); y += GRID_SIZE) {
+        dc.DrawLine(0, y, m_canvas.GetWidth(), y);
     }
 }
 
