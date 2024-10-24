@@ -45,7 +45,8 @@ private:
     void OnMouseMove(wxMouseEvent& event);
     void OnMouseUp(wxMouseEvent& event);
     void DrawShapes(wxMemoryDC& dc);
-    void OnShowShaped(wxCommandEvent& event);
+    void DrawGrid(wxMemoryDC& dc); // 新增：绘制网格
+    void UpdateCanvas();
 
     wxDECLARE_EVENT_TABLE();
 
@@ -65,7 +66,10 @@ private:
     };
 
     std::vector<Shape> m_shapes;
+
+    const int GRID_SIZE = 20; // 网格间距
 };
+
 #pragma endregion
 
 #pragma region ShapedFrame
@@ -169,15 +173,16 @@ EVT_MENU(1003, MyFrame::OnExportPDF)
 EVT_MENU(1004, MyFrame::OnClearCanvas)
 EVT_MENU(1005, MyFrame::OnDrawRectangle)
 EVT_MENU(1006, MyFrame::OnDrawCircle)
-EVT_MENU(1008, MyFrame::OnDrawLine)
-EVT_MENU(1007, MyFrame::OnUndo)
+EVT_MENU(1007, MyFrame::OnDrawLine)
+EVT_MENU(1008, MyFrame::OnUndo)
 EVT_MENU(wxID_ABOUT, MyFrame::OnAbout)
 EVT_MENU(wxID_EXIT, MyFrame::OnQuit)
 EVT_PAINT(MyFrame::OnPaint)
 EVT_LEFT_DOWN(MyFrame::OnMouseDown)
 EVT_LEFT_UP(MyFrame::OnMouseUp)
 EVT_MOTION(MyFrame::OnMouseMove)
-EVT_MENU(Show_Shaped, MyFrame::OnShowShaped)
+
+//EVT_MENU(Show_Shaped, MyFrame::OnShowShaped)
 wxEND_EVENT_TABLE()
 #pragma endregion
 
@@ -211,13 +216,13 @@ bool MyApp::OnInit() {
     return true;
 }
 
-
 #pragma region 不同Frame对应方法实现
 
 #pragma region MyFrame有关方法实现
 
 MyFrame::MyFrame(const wxString& title)
-    : wxFrame(NULL, wxID_ANY, title), m_canvas(800, 600), m_drawing(false), m_drawCircle(false), m_drawLine(false), m_drawRectangle(false) {
+    : wxFrame(NULL, wxID_ANY, title), m_canvas(1200, 800), m_drawing(false), m_drawCircle(false), m_drawLine(false), m_drawRectangle(false) {
+
     wxToolBar* toolbar = CreateToolBar();
     toolbar->AddTool(1001, "Import CAD", wxArtProvider::GetBitmap(wxART_FILE_OPEN));
     toolbar->AddTool(1002, "Save", wxArtProvider::GetBitmap(wxART_FILE_SAVE));
@@ -225,19 +230,19 @@ MyFrame::MyFrame(const wxString& title)
     toolbar->AddTool(1004, "Clear Canvas", wxArtProvider::GetBitmap(wxART_DELETE));
     toolbar->AddTool(1005, "Draw Rectangle", wxArtProvider::GetBitmap(wxART_TIP));
     toolbar->AddTool(1006, "Draw Circle", wxArtProvider::GetBitmap(wxART_GO_DOWN));
-    toolbar->AddTool(1008, "Draw Line", wxArtProvider::GetBitmap(wxART_TIP));
-    toolbar->AddTool(1007, "Undo", wxArtProvider::GetBitmap(wxART_UNDO));
+    toolbar->AddTool(1007, "Draw Line", wxArtProvider::GetBitmap(wxART_TIP));
+    toolbar->AddTool(1008, "Undo", wxArtProvider::GetBitmap(wxART_UNDO));
     toolbar->Realize();
 
     wxMenu* menuFile = new wxMenu;
-    menuFile->Append(1001, "Import CAD File\tCtrl-C", "Import CAD format files");
+    menuFile->Append(1001, "Import CAD File\tCtrl-I", "Import CAD format files");
     menuFile->Append(1002, "Save\tCtrl-S", "Save the project");
     menuFile->Append(1003, "Export to PDF\tCtrl-E", "Export the project as a PDF");
     menuFile->Append(1004, "Clear Canvas\tCtrl-L", "Clear the drawing canvas");
     menuFile->Append(1005, "Draw Rectangle\tCtrl-R", "Draw a rectangle on the canvas");
     menuFile->Append(1006, "Draw Circle\tCtrl-C", "Draw a circle on the canvas");
-    menuFile->Append(1008, "Draw Line\tCtrl-L", "Draw a line on the canvas");
-    menuFile->Append(1007, "Undo\tCtrl-Z", "Undo the last drawing operation");
+    menuFile->Append(1007, "Draw Line\tCtrl-L", "Draw a line on the canvas");
+    menuFile->Append(1008, "Undo\tCtrl-Z", "Undo the last drawing operation");
     menuFile->Append(wxID_EXIT, "Exit\tCtrl-Q", "Close the application");
 
     wxMenu* menuHelp = new wxMenu;
@@ -247,6 +252,7 @@ MyFrame::MyFrame(const wxString& title)
     menuBar->Append(menuFile, "File");
     menuBar->Append(menuHelp, "Help");
     SetMenuBar(menuBar);
+
 
 #pragma region 创建侧边栏
     wxBoxSizer* mainSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -264,8 +270,6 @@ MyFrame::MyFrame(const wxString& title)
 
     SetSize(1000, 1000);
 #pragma endregion
-
-
 }
 
 void MyFrame::OnImportCAD(wxCommandEvent& event) {
@@ -335,11 +339,7 @@ void MyFrame::OnDrawLine(wxCommandEvent& event) {
 void MyFrame::OnUndo(wxCommandEvent& event) {
     if (!m_shapes.empty()) {
         m_shapes.pop_back();
-        wxMemoryDC dc(m_canvas);
-        dc.SetBackground(wxBrush(GetBackgroundColour()));
-        dc.Clear();
-        DrawShapes(dc);
-        Refresh();
+        UpdateCanvas();
     }
     else {
         wxMessageBox("No shapes to undo!", "Info", wxOK | wxICON_INFORMATION);
@@ -361,12 +361,47 @@ void MyFrame::OnMouseDown(wxMouseEvent& event) {
 void MyFrame::OnMouseMove(wxMouseEvent& event) {
     if (m_drawing) {
         m_endPoint = event.GetPosition();
-        wxMemoryDC dc(m_canvas);
-        dc.SetBrush(wxBrush(wxColor(0, 0, 255)));
-        dc.SetPen(wxPen(wxColor(0, 0, 255), 2));
+        UpdateCanvas(); // Update the canvas with the current shape
+    }
+}
 
-        dc.SetBackground(wxBrush(GetBackgroundColour()));
-        dc.Clear();
+void MyFrame::OnMouseUp(wxMouseEvent& event) {
+    if (m_drawing) {
+        m_drawing = false;
+
+        // 对齐到网格
+        m_startPoint.x = (m_startPoint.x / GRID_SIZE) * GRID_SIZE;
+        m_startPoint.y = (m_startPoint.y / GRID_SIZE) * GRID_SIZE;
+        m_endPoint.x = (m_endPoint.x / GRID_SIZE) * GRID_SIZE;
+        m_endPoint.y = (m_endPoint.y / GRID_SIZE) * GRID_SIZE;
+
+        Shape shape = { m_startPoint, m_endPoint, m_drawCircle, m_drawRectangle };
+
+        if (m_drawLine) {
+            shape.isCircle = false;
+            shape.isRectangle = false;
+        }
+
+        m_shapes.push_back(shape);
+        UpdateCanvas(); // Finalize the drawing
+    }
+}
+
+void MyFrame::UpdateCanvas() {
+    wxMemoryDC dc(m_canvas);
+    dc.SetBackground(wxBrush(GetBackgroundColour()));
+    dc.Clear();
+
+    // 绘制网格
+    DrawGrid(dc);
+
+    // Draw previous shapes
+    DrawShapes(dc);
+
+    // Draw current temporary shape
+    if (m_drawing) {
+        dc.SetBrush(wxBrush(wxColor(0, 0, 255, 128))); // semi-transparent color
+        dc.SetPen(wxPen(wxColor(0, 0, 255), 2));
 
         if (m_drawCircle) {
             int radius = static_cast<int>(sqrt(pow(m_endPoint.x - m_startPoint.x, 2) + pow(m_endPoint.y - m_startPoint.y, 2)));
@@ -380,25 +415,9 @@ void MyFrame::OnMouseMove(wxMouseEvent& event) {
                 m_endPoint.x - m_startPoint.x,
                 m_endPoint.y - m_startPoint.y);
         }
-
-        DrawShapes(dc);
-        Refresh();
     }
-}
 
-void MyFrame::OnMouseUp(wxMouseEvent& event) {
-    if (m_drawing) {
-        m_drawing = false;
-
-        Shape shape = { m_startPoint, m_endPoint, m_drawCircle, m_drawRectangle };
-
-        if (m_drawLine) {
-            shape.isCircle = false;
-            shape.isRectangle = false;
-        }
-
-        m_shapes.push_back(shape);
-    }
+    Refresh();
 }
 
 void MyFrame::DrawShapes(wxMemoryDC& dc) {
@@ -421,6 +440,18 @@ void MyFrame::DrawShapes(wxMemoryDC& dc) {
     }
 }
 
+void MyFrame::DrawGrid(wxMemoryDC& dc) {
+    dc.SetPen(wxPen(wxColor(200, 200, 200), 1)); // 浅灰色网格线
+
+    for (int x = 0; x < m_canvas.GetWidth(); x += GRID_SIZE) {
+        dc.DrawLine(x, 0, x, m_canvas.GetHeight());
+    }
+
+    for (int y = 0; y < m_canvas.GetHeight(); y += GRID_SIZE) {
+        dc.DrawLine(0, y, m_canvas.GetWidth(), y);
+    }
+}
+
 void MyFrame::OnAbout(wxCommandEvent& event) {
     wxMessageBox("This is an industrial design application for CAD management.", "About", wxOK | wxICON_INFORMATION);
 }
@@ -429,11 +460,12 @@ void MyFrame::OnQuit(wxCommandEvent& event) {
     Close(true);
 }
 
-void MyFrame::OnShowShaped(wxCommandEvent& event)
-{
-    ShapedFrame* frame = new ShapedFrame(this);
-    frame->Show();
-}
+
+//void MyFrame::OnShowShaped(wxCommandEvent& event)
+//{
+//    ShapedFrame* frame = new ShapedFrame(this);
+//    frame->Show();
+//}
 #pragma endregion
 
 #pragma region ShapedFrame有关方法实现
