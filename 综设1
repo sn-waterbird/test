@@ -10,8 +10,8 @@
 // MyApp class
 enum
 {
-    Show_Shaped = 100,//”√”⁄∞Û∂®œ‘ æÕº∆¨ ¬º˛
-    Show_Draw = 101//∞Û∂®ª≠Õºπ¶ƒ‹
+    Show_Shaped = 100,//Áî®‰∫éÁªëÂÆöÊòæÁ§∫ÂõæÁâá‰∫ã‰ª∂
+    Show_Draw = 101//ÁªëÂÆöÁîªÂõæÂäüËÉΩ
 };
 
 class MyApp : public wxApp {
@@ -36,6 +36,7 @@ private:
     void OnDrawRectangle(wxCommandEvent& event);
     void OnDrawCircle(wxCommandEvent& event);
     void OnDrawLine(wxCommandEvent& event);
+    void Onlianxian(wxCommandEvent& event);
     void OnUndo(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
     void OnQuit(wxCommandEvent& event);
@@ -45,7 +46,7 @@ private:
     void OnMouseMove(wxMouseEvent& event);
     void OnMouseUp(wxMouseEvent& event);
     void DrawShapes(wxMemoryDC& dc);
-    void DrawGrid(wxMemoryDC& dc); // –¬‘ˆ£∫ªÊ÷∆Õ¯∏Ò
+    void DrawGrid(wxMemoryDC& dc); // Êñ∞Â¢ûÔºöÁªòÂà∂ÁΩëÊ†º
     void UpdateCanvas();
 
     wxDECLARE_EVENT_TABLE();
@@ -57,17 +58,19 @@ private:
     bool m_drawCircle;
     bool m_drawLine;
     bool m_drawRectangle;
+    bool m_lianxian;
 
     struct Shape {
         wxPoint start;
         wxPoint end;
         bool isCircle;
         bool isRectangle;
+        bool islianxian;
     };
 
     std::vector<Shape> m_shapes;
 
-    const int GRID_SIZE = 20; // Õ¯∏Òº‰æ‡
+    const int GRID_SIZE = 20; // ÁΩëÊ†ºÈó¥Ë∑ù
 };
 
 #pragma endregion
@@ -175,6 +178,7 @@ EVT_MENU(1005, MyFrame::OnDrawRectangle)
 EVT_MENU(1006, MyFrame::OnDrawCircle)
 EVT_MENU(1007, MyFrame::OnDrawLine)
 EVT_MENU(1008, MyFrame::OnUndo)
+EVT_MENU(1009, MyFrame::Onlianxian)
 EVT_MENU(wxID_ABOUT, MyFrame::OnAbout)
 EVT_MENU(wxID_EXIT, MyFrame::OnQuit)
 EVT_PAINT(MyFrame::OnPaint)
@@ -208,7 +212,7 @@ END_EVENT_TABLE()
 // Application implementation
 wxIMPLEMENT_APP(MyApp);
 
-//tittle√¸√˚
+//tittleÂëΩÂêç
 bool MyApp::OnInit() {
     MyFrame* frame = new MyFrame("genshin");
     wxInitAllImageHandlers();
@@ -216,9 +220,9 @@ bool MyApp::OnInit() {
     return true;
 }
 
-#pragma region ≤ªÕ¨Frame∂‘”¶∑Ω∑® µœ÷
+#pragma region ‰∏çÂêåFrameÂØπÂ∫îÊñπÊ≥ïÂÆûÁé∞
 
-#pragma region MyFrame”–πÿ∑Ω∑® µœ÷
+#pragma region MyFrameÊúâÂÖ≥ÊñπÊ≥ïÂÆûÁé∞
 
 MyFrame::MyFrame(const wxString& title)
     : wxFrame(NULL, wxID_ANY, title), m_canvas(1200, 800), m_drawing(false), m_drawCircle(false), m_drawLine(false), m_drawRectangle(false) {
@@ -232,6 +236,7 @@ MyFrame::MyFrame(const wxString& title)
     toolbar->AddTool(1006, "Draw Circle", wxArtProvider::GetBitmap(wxART_GO_DOWN));
     toolbar->AddTool(1007, "Draw Line", wxArtProvider::GetBitmap(wxART_TIP));
     toolbar->AddTool(1008, "Undo", wxArtProvider::GetBitmap(wxART_UNDO));
+    toolbar->AddTool(1009, "lianxian", wxArtProvider::GetBitmap(wxART_TIP));
     toolbar->Realize();
 
     wxMenu* menuFile = new wxMenu;
@@ -243,6 +248,7 @@ MyFrame::MyFrame(const wxString& title)
     menuFile->Append(1006, "Draw Circle\tCtrl-C", "Draw a circle on the canvas");
     menuFile->Append(1007, "Draw Line\tCtrl-L", "Draw a line on the canvas");
     menuFile->Append(1008, "Undo\tCtrl-Z", "Undo the last drawing operation");
+    menuFile->Append(1009, "Draw Line\tCtrl-K", "lianxian on the canvas");
     menuFile->Append(wxID_EXIT, "Exit\tCtrl-Q", "Close the application");
 
     wxMenu* menuHelp = new wxMenu;
@@ -254,16 +260,16 @@ MyFrame::MyFrame(const wxString& title)
     SetMenuBar(menuBar);
 
 
-#pragma region ¥¥Ω®≤‡±ﬂ¿∏
+#pragma region ÂàõÂª∫‰æßËæπÊ†è
     wxBoxSizer* mainSizer = new wxBoxSizer(wxHORIZONTAL);
 
-    // ¥¥Ω®≤‡±ﬂ¿∏
+    // ÂàõÂª∫‰æßËæπÊ†è
     wxPanel* sidePanel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(100, 600));
     wxBoxSizer* sideSizer = new wxBoxSizer(wxVERTICAL);
     SizerPanel* sizerPanel = new SizerPanel(sideSizer, sidePanel, this);
     sidePanel->SetSizer(sideSizer);
 
-    // Ω´≤‡±ﬂ¿∏”Î÷˜“™ƒ⁄»›≤ø∑÷¡¨Ω”
+    // Â∞Ü‰æßËæπÊ†è‰∏é‰∏ªË¶ÅÂÜÖÂÆπÈÉ®ÂàÜËøûÊé•
     mainSizer->Add(sidePanel, 0, wxEXPAND);
 
     SetSizerAndFit(mainSizer);
@@ -319,6 +325,7 @@ void MyFrame::OnDrawRectangle(wxCommandEvent& event) {
     m_drawRectangle = true;
     m_drawCircle = false;
     m_drawLine = false;
+    m_lianxian = false;
     wxMessageBox("Click and drag to draw a rectangle on the canvas.", "Draw Rectangle", wxOK | wxICON_INFORMATION);
 }
 
@@ -326,6 +333,7 @@ void MyFrame::OnDrawCircle(wxCommandEvent& event) {
     m_drawCircle = true;
     m_drawLine = false;
     m_drawRectangle = false;
+    m_lianxian = false;
     wxMessageBox("Click and drag to draw a circle on the canvas.", "Draw Circle", wxOK | wxICON_INFORMATION);
 }
 
@@ -333,9 +341,17 @@ void MyFrame::OnDrawLine(wxCommandEvent& event) {
     m_drawLine = true;
     m_drawCircle = false;
     m_drawRectangle = false;
+    m_lianxian = false;
     wxMessageBox("Click to set start and end points for the line.", "Draw Line", wxOK | wxICON_INFORMATION);
 }
 
+void MyFrame::Onlianxian(wxCommandEvent& event) {
+    m_drawLine = false;
+    m_drawCircle = false;
+    m_drawRectangle = false;
+    m_lianxian = true;
+    wxMessageBox("Click to set start and end points for the line.", "Draw Line", wxOK | wxICON_INFORMATION);
+}
 void MyFrame::OnUndo(wxCommandEvent& event) {
     if (!m_shapes.empty()) {
         m_shapes.pop_back();
@@ -369,17 +385,18 @@ void MyFrame::OnMouseUp(wxMouseEvent& event) {
     if (m_drawing) {
         m_drawing = false;
 
-        // ∂‘∆ÎµΩÕ¯∏Ò
-        m_startPoint.x = (m_startPoint.x / GRID_SIZE) * GRID_SIZE;
-        m_startPoint.y = (m_startPoint.y / GRID_SIZE) * GRID_SIZE;
-        m_endPoint.x = (m_endPoint.x / GRID_SIZE) * GRID_SIZE;
-        m_endPoint.y = (m_endPoint.y / GRID_SIZE) * GRID_SIZE;
+        // ÂØπÈΩêÂà∞ÁΩëÊ†º
+       // m_startPoint.x = (m_startPoint.x / GRID_SIZE) * GRID_SIZE;
+        //m_startPoint.y = (m_startPoint.y / GRID_SIZE) * GRID_SIZE;
+        //m_endPoint.x = (m_endPoint.x / GRID_SIZE) * GRID_SIZE;
+        //m_endPoint.y = (m_endPoint.y / GRID_SIZE) * GRID_SIZE;
 
-        Shape shape = { m_startPoint, m_endPoint, m_drawCircle, m_drawRectangle };
+        Shape shape = { m_startPoint, m_endPoint, m_drawCircle, m_drawRectangle,m_lianxian };
 
         if (m_drawLine) {
             shape.isCircle = false;
             shape.isRectangle = false;
+            shape.islianxian = false;
         }
 
         m_shapes.push_back(shape);
@@ -392,7 +409,7 @@ void MyFrame::UpdateCanvas() {
     dc.SetBackground(wxBrush(GetBackgroundColour()));
     dc.Clear();
 
-    // ªÊ÷∆Õ¯∏Ò
+    // ÁªòÂà∂ÁΩëÊ†º
     DrawGrid(dc);
 
     // Draw previous shapes
@@ -407,8 +424,11 @@ void MyFrame::UpdateCanvas() {
             int radius = static_cast<int>(sqrt(pow(m_endPoint.x - m_startPoint.x, 2) + pow(m_endPoint.y - m_startPoint.y, 2)));
             dc.DrawCircle(m_startPoint.x, m_startPoint.y, radius);
         }
+        else if (m_lianxian) {
+            dc.DrawLine(m_startPoint.x, m_startPoint.y + 35, m_endPoint.x, m_endPoint.y + 35);
+        }
         else if (m_drawLine) {
-            dc.DrawLine(m_startPoint.x, m_startPoint.y, m_endPoint.x, m_endPoint.y);
+            dc.DrawSpline(m_startPoint.x, m_startPoint.y, m_startPoint.x + 50, m_startPoint.y + 50, m_startPoint.x, m_startPoint.y + 100);
         }
         else if (m_drawRectangle) {
             dc.DrawRectangle(m_startPoint.x, m_startPoint.y,
@@ -421,27 +441,56 @@ void MyFrame::UpdateCanvas() {
 }
 
 void MyFrame::DrawShapes(wxMemoryDC& dc) {
-    dc.SetBrush(wxBrush(wxColor(0, 0, 255)));
+
+
+    dc.SetBrush(wxBrush(wxColor(0, 0, 0), wxBRUSHSTYLE_TRANSPARENT));
     dc.SetPen(wxPen(wxColor(0, 0, 255), 2));
 
     for (const auto& shape : m_shapes) {
         if (shape.isCircle) {
-            int radius = static_cast<int>(sqrt(pow(shape.end.x - shape.start.x, 2) + pow(shape.end.y - shape.start.y, 2)));
-            dc.DrawCircle(shape.start.x, shape.start.y, radius);
+            dc.DrawArc(shape.start.x, shape.start.y + 57, shape.start.x, shape.start.y + 7, shape.start.x - 10, shape.start.y + 32);
+            dc.DrawLine(shape.start.x, shape.start.y + 57, shape.start.x + 60, shape.start.y + 57);
+            dc.DrawLine(shape.start.x, shape.start.y + 7, shape.start.x + 60, shape.start.y + 7);
+            dc.DrawArc(shape.start.x + 60, shape.start.y + 57, shape.start.x + 60, shape.start.y + 7, shape.start.x + 50, shape.start.y + 32);
+            dc.SetPen(wxPen(wxColor(255, 0, 0), 2));
+            dc.DrawCircle(shape.start.x + 74, shape.start.y + 32, 2);
+            dc.DrawCircle(shape.start.x + 14, shape.start.y + 42, 2);
+            dc.DrawCircle(shape.start.x + 14, shape.start.y + 22, 2);
+            dc.SetPen(wxPen(wxColor(0, 0, 255), 2));
         }
         else if (shape.isRectangle) {
-            dc.DrawRectangle(shape.start.x, shape.start.y,
-                shape.end.x - shape.start.x,
-                shape.end.y - shape.start.y);
+
+            dc.DrawLine(shape.start.x, shape.start.y + 7, shape.start.x + 50, shape.start.y + 32);
+            dc.DrawLine(shape.start.x, shape.start.y + 57, shape.start.x + 50, shape.start.y + 32);
+            dc.DrawLine(shape.start.x, shape.start.y + 7, shape.start.x, shape.start.y + 57);
+            dc.DrawCircle(shape.start.x + 55, shape.start.y + 32, 5);
+            dc.SetPen(wxPen(wxColor(255, 0, 0), 2));
+            dc.DrawCircle(shape.start.x + 60, shape.start.y + 32, 2);
+            dc.DrawCircle(shape.start.x, shape.start.y + 42, 2);
+            dc.DrawCircle(shape.start.x, shape.start.y + 22, 2);
+            dc.SetPen(wxPen(wxColor(0, 0, 255), 2));
+
+        }
+        else if (shape.islianxian) {
+            dc.DrawLine(shape.start.x, shape.start.y + 35, shape.end.x, shape.end.y + 35);
         }
         else {
-            dc.DrawLine(shape.start.x, shape.start.y, shape.end.x, shape.end.y);
+
+            dc.DrawLine(shape.start.x, shape.start.y + 10, shape.start.x, shape.start.y + 60);
+            dc.DrawLine(shape.start.x, shape.start.y + 10, shape.start.x + 60, shape.start.y + 10);
+            dc.DrawLine(shape.start.x, shape.start.y + 60, shape.start.x + 60, shape.start.y + 60);
+            dc.DrawArc(shape.start.x + 60, shape.start.y + 60, shape.start.x + 60, shape.start.y + 10, shape.start.x + 50, shape.start.y + 35);
+            dc.SetPen(wxPen(wxColor(255, 0, 0), 2));
+            dc.DrawCircle(shape.start.x + 74, shape.start.y + 35, 2);
+            dc.DrawCircle(shape.start.x, shape.start.y + 45, 2);
+            dc.DrawCircle(shape.start.x, shape.start.y + 25, 2);
+            dc.SetPen(wxPen(wxColor(0, 0, 255), 2));
         }
     }
 }
 
 void MyFrame::DrawGrid(wxMemoryDC& dc) {
-    dc.SetPen(wxPen(wxColor(200, 200, 200), 1)); // «≥ª“…´Õ¯∏Òœﬂ
+    dc.SetPen(wxPen(wxColor(200, 200, 200), 1)); // ÊµÖÁÅ∞Ëâ≤ÁΩëÊ†ºÁ∫ø
 
     for (int x = 0; x < m_canvas.GetWidth(); x += GRID_SIZE) {
         dc.DrawLine(x, 0, x, m_canvas.GetHeight());
@@ -468,7 +517,7 @@ void MyFrame::OnQuit(wxCommandEvent& event) {
 //}
 #pragma endregion
 
-#pragma region ShapedFrame”–πÿ∑Ω∑® µœ÷
+#pragma region ShapedFrameÊúâÂÖ≥ÊñπÊ≥ïÂÆûÁé∞
 ShapedFrame::ShapedFrame(wxFrame* parent) :wxFrame(NULL, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(250, 300), wxFRAME_SHAPED | wxSIMPLE_BORDER | wxFRAME_NO_TASKBAR | wxSTAY_ON_TOP)
 {
     /*wxAnimationCtrl* an = new wxAnimationCtrl(this, wxID_ANY, wxAnimation(wxT("ddear.gif"), wxANIMATION_TYPE_ANY), wxDefaultPosition, wxDefaultSize, 2097152L, wxAnimationCtrlNameStr);
@@ -534,12 +583,12 @@ void ShapedFrame::OnPaint(wxPaintEvent& event)
 }
 #pragma endregion
 
-#pragma region SizerFrame”–πÿ∑Ω∑® µœ÷
+#pragma region SizerFrameÊúâÂÖ≥ÊñπÊ≥ïÂÆûÁé∞
 SizerPanel::SizerPanel(wxBoxSizer* Sizer, wxPanel* Panel, wxFrame* parent)
     :wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize)
 {
     wxFrame* parentFrame = parent;
-    // ‘⁄≤‡±ﬂ¿∏÷–ÃÌº”∞¥≈•
+    // Âú®‰æßËæπÊ†è‰∏≠Ê∑ªÂä†ÊåâÈíÆ
     wxButton* button1 = new wxButton(Panel, wxID_ANY, "AND");
     button1->Bind(wxEVT_BUTTON, [this, parentFrame](wxCommandEvent& event) {
         ButtonAnd(event, parentFrame); });
@@ -566,7 +615,7 @@ void SizerPanel::ButtonAnd(wxCommandEvent& event, wxFrame* parentFrame)
 
 void SizerPanel::ButtonOr(wxCommandEvent& event, wxFrame* parentFrame)
 {
-    /*ShapedFrame* frame = new ShapedFrame(parentFrame);
+    /*ShapedFrame* frame = new ShapedFrame(paraentFrame);
     frame->m_bitmap = wxBitmap("or.png", wxBITMAP_TYPE_PNG);
     frame->SetShape(wxRegion(frame->m_bitmap, *wxWHITE));
     frame->Show();*/
